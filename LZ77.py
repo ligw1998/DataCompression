@@ -7,9 +7,9 @@ class LZ77Compressor:
     """
     MAX_WINDOW_SIZE = 65535
 
-    def __init__(self, window_size=20):
+    def __init__(self, window_size=20, lookahead_buffer_size=15):
         self.window_size = min(window_size, self.MAX_WINDOW_SIZE)  # in case the matching process
-        self.lookahead_buffer_size = 255  # length of match is at most 8 bits
+        self.lookahead_buffer_size = lookahead_buffer_size  # length of match is at most 8 bits
 
     def compress(self, input_file_path, output_file_path=None, verbose=False):
         """
@@ -36,9 +36,9 @@ class LZ77Compressor:
         except IOError:
             print('Could not open input file ...')
             raise
-
+        #print(len(data))
         while i < len(data):
-            print(i)
+            #print(i)
 
             match = self.findLongestMatch(data, i)  # use function findLongestMatch to find the longest match
 
@@ -106,7 +106,8 @@ class LZ77Compressor:
             print('Could not open input file ...')
             raise
 
-        while len(data) >= 32:
+        while len(data) >= 24:
+            #print(len(data))
 
             byte1 = ord(data[0:8].tobytes())
             byte2 = ord(data[8:16].tobytes())
