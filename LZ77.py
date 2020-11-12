@@ -5,11 +5,11 @@ class LZ77Compressor:
     """
     A simplified implementation of the LZ77 Compression Algorithm
     """
-    MAX_WINDOW_SIZE = 400
+    MAX_WINDOW_SIZE = 65535
 
     def __init__(self, window_size=20):
         self.window_size = min(window_size, self.MAX_WINDOW_SIZE)  # in case the matching process
-        self.lookahead_buffer_size = 15  # length of match is at most 4 bits
+        self.lookahead_buffer_size = 255  # length of match is at most 8 bits
 
     def compress(self, input_file_path, output_file_path=None, verbose=False):
         """
@@ -17,11 +17,11 @@ class LZ77Compressor:
         LZ77 compression algorithm.
 
         According to the rule given in the instruction, the compressed format is:
-        8 bits pointer (distance to the start of the match from the current position) followed
-        by 4 bits(length of the match) and then 8 bits(1 byte character)
+        16 bits pointer (distance to the start of the match from the current position) followed
+        by 8 bits(length of the match) and then 8 bits(for the character)
 
         If a path to the output file is provided, the compressed data is written into
-        a binary file. Otherwise, it is returned as a bitarray
+        a binary file. Otherwise, it is returned as a bit-array
 
         if verbose is enabled, the compression description is printed to standard output
         """
@@ -31,38 +31,44 @@ class LZ77Compressor:
 
         # read the input file
         try:
-            with open(input_file_path, 'rb') as input_file:
+            with open(input_file_path, 'rb') as input_file:  # binary read input file
                 data = input_file.read()
         except IOError:
             print('Could not open input file ...')
             raise
 
         while i < len(data):
-            # print(i)
+            print(i)
 
-            match = self.findLongestMatch(data, i)
+            match = self.findLongestMatch(data, i)  # use function findLongestMatch to find the longest match
 
             if match:
-                # Add 1 bit flag, followed by 12 bit for distance, and 4 bit for the length
-                # of the match
+                # Add 16 bits for distance, followed by 8 bits for length, and 8 bits for character of the match
                 (bestMatchDistance, bestMatchLength) = match
 
-                output_buffer.frombytes(bytes([bestMatchDistance >> 4]))
-                output_buffer.frombytes(bytes([((bestMatchDistance & 0xf) << 4) | bestMatchLength]))
-
-                if verbose:
-                    print("<1, %i, %i>" % (bestMatchDistance, bestMatchLength), end='')
+                output_buffer.frombytes(bytes([bestMatchDistance >> 8]))
+                output_buffer.frombytes(bytes([bestMatchDistance & 0xff]))
+                output_buffer.frombytes(bytes([bestMatchLength]))
 
                 i += bestMatchLength
+                if i >= len(data):
+                    break
 
-            else:
-                # No useful match was found. Add 0 bit flag, followed by 8 bit for the character
-                output_buffer.append(False)
-                output_buffer.append(False)
                 output_buffer.frombytes(bytes([data[i]]))
 
                 if verbose:
-                    print("<0, %s>" % data[i], end='')
+                    print("<%i, %i, %s>" % (bestMatchDistance, bestMatchLength, data[i]), end='')
+                i += 1
+
+            else:
+                # No useful match was found. Add 16 bits 0, followed by 8 bits 0, and 8 bits for the character
+                output_buffer.frombytes(bytes([0]))
+                output_buffer.frombytes(bytes([0]))
+                output_buffer.frombytes(bytes([0]))
+                output_buffer.frombytes(bytes([data[i]]))
+
+                if verbose:
+                    print("<0, 0, %s>" % data[i], end='')
 
                 i += 1
 
@@ -100,25 +106,27 @@ class LZ77Compressor:
             print('Could not open input file ...')
             raise
 
-        while len(data) >= 9:
+        while len(data) >= 32:
 
-            flag = data.pop(0)
+            byte1 = ord(data[0:8].tobytes())
+            byte2 = ord(data[8:16].tobytes())
+            byte3 = ord(data[16:24].tobytes())
+            del data[0:24]
+            distance = (byte1 << 8) | byte2
+            length = byte3
 
-            if not flag:
+            if distance == 0:
                 byte = data[0:8].tobytes()
-
                 output_buffer.append(byte)
                 del data[0:8]
             else:
-                byte1 = ord(data[0:8].tobytes())
-                byte2 = ord(data[8:16].tobytes())
-
-                del data[0:16]
-                distance = (byte1 << 4) | (byte2 >> 4)
-                length = (byte2 & 0xf)
-
                 for i in range(length):
                     output_buffer.append(output_buffer[-distance])
+                if len(data) < 8:
+                    break
+                byte = data[0:8].tobytes()
+                output_buffer.append(byte)
+                del data[0:8]
         out_data = b''.join(output_buffer)
 
         if output_file_path:
@@ -163,5 +171,5 @@ class LZ77Compressor:
                     best_match_length = len(substring)
 
         if best_match_distance > 0 and best_match_length > 0:
-            return (best_match_distance, best_match_length)
+            return best_match_distance, best_match_length
         return None
