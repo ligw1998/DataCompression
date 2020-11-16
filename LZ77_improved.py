@@ -1,7 +1,7 @@
 from bitarray import bitarray
 import os
 
-class LZ77Compressor:
+class LZSSCompressor:
     """
     A simplified implementation of the LZ77 Compression Algorithm
     """
