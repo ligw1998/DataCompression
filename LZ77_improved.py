@@ -7,9 +7,9 @@ class LZ77Compressor:
     """
     MAX_WINDOW_SIZE = 400
 
-    def __init__(self, window_size=20):
+    def __init__(self, window_size=20,lookahead_buffer_size=15):
         self.window_size = min(window_size, self.MAX_WINDOW_SIZE)
-        self.lookahead_buffer_size = 15  # length of match is at most 4 bits
+        self.lookahead_buffer_size = lookahead_buffer_size  # length of match is at most 4 bits
 
     def compress(self, input_file_path, output_file_path=None, verbose=False):
         """
@@ -166,5 +166,5 @@ class LZ77Compressor:
                     best_match_length = len(substring)
 
         if best_match_distance > 0 and best_match_length > 0:
-            return (best_match_distance, best_match_length)
+            return best_match_distance, best_match_length
         return None

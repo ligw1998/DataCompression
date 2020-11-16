@@ -154,7 +154,7 @@ class LZ77Compressor:
         # Optimization: Only consider substrings of length 2 and greater, and just
         # output any substring of length 1 (8 bits uncompressed is better than 13 bits
         # for the flag, distance, and length)
-        for j in range(current_position + 2, end_of_buffer):
+        for j in range(current_position + 1, end_of_buffer):
 
             start_index = max(0, current_position - self.window_size)
             substring = data[current_position:j]
