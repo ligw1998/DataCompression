@@ -1,4 +1,5 @@
 from bitarray import bitarray
+from tqdm import tqdm
 
 
 class LZ77Compressor:
@@ -36,9 +37,10 @@ class LZ77Compressor:
         except IOError:
             print('Could not open input file ...')
             raise
-        #print(len(data))
+        # print(len(data))
+        pbar = tqdm(total=len(data))
         while i < len(data):
-            #print(i)
+            # print(i)
 
             match = self.findLongestMatch(data, i)  # use function findLongestMatch to find the longest match
 
@@ -51,6 +53,7 @@ class LZ77Compressor:
                 output_buffer.frombytes(bytes([bestMatchLength]))
 
                 i += bestMatchLength
+                pbar.update(bestMatchLength)
                 if i >= len(data):
                     break
 
@@ -59,6 +62,7 @@ class LZ77Compressor:
                 if verbose:
                     print("<%i, %i, %s>" % (bestMatchDistance, bestMatchLength, data[i]), end='')
                 i += 1
+                pbar.update(1)
 
             else:
                 # No useful match was found. Add 16 bits 0, followed by 8 bits 0, and 8 bits for the character
@@ -71,8 +75,10 @@ class LZ77Compressor:
                     print("<0, 0, %s>" % data[i], end='')
 
                 i += 1
+                pbar.update(1)
 
         # fill the buffer with zeros if the number of bits is not a multiple of 8
+        pbar.close()
         output_buffer.fill()
 
         # write the compressed data into a binary file if a path is provided
@@ -107,7 +113,7 @@ class LZ77Compressor:
             raise
 
         while len(data) >= 24:
-            #print(len(data))
+            # print(len(data))
 
             byte1 = ord(data[0:8].tobytes())
             byte2 = ord(data[8:16].tobytes())
@@ -151,9 +157,6 @@ class LZ77Compressor:
         best_match_distance = -1
         best_match_length = -1
 
-        # Optimization: Only consider substrings of length 2 and greater, and just
-        # output any substring of length 1 (8 bits uncompressed is better than 13 bits
-        # for the flag, distance, and length)
         for j in range(current_position + 1, end_of_buffer):
 
             start_index = max(0, current_position - self.window_size)

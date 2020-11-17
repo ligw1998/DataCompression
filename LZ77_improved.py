@@ -1,13 +1,13 @@
 from bitarray import bitarray
 import os
-
+from tqdm import tqdm
 class LZSSCompressor:
     """
     A simplified implementation of the LZ77 Compression Algorithm
     """
-    MAX_WINDOW_SIZE = 400
+    MAX_WINDOW_SIZE = 4095
 
-    def __init__(self, window_size=20,lookahead_buffer_size=15):
+    def __init__(self, window_size=20, lookahead_buffer_size=15):
         self.window_size = min(window_size, self.MAX_WINDOW_SIZE)
         self.lookahead_buffer_size = lookahead_buffer_size  # length of match is at most 4 bits
 
@@ -39,6 +39,8 @@ class LZSSCompressor:
             print('Could not open input file ...')
             raise
 
+        pbar = tqdm(total=len(data))
+
         while i < len(data):
             # print(i)
 
@@ -48,8 +50,8 @@ class LZSSCompressor:
                 # Add 1 bit flag, followed by 12 bit for distance, and 4 bit for the length
                 # of the match
                 (bestMatchDistance, bestMatchLength) = match
-                #print(f"!{bestMatchDistance}")
-                #print(f"?{bestMatchLength}")
+                # print(f"!{bestMatchDistance}")
+                # print(f"?{bestMatchLength}")
                 output_buffer.append(True)
                 output_buffer.frombytes(bytes([bestMatchDistance >> 4]))
                 output_buffer.frombytes(bytes([((bestMatchDistance & 0xf) << 4) | bestMatchLength]))
@@ -58,6 +60,7 @@ class LZSSCompressor:
                     print("<1, %i, %i>" % (bestMatchDistance, bestMatchLength), end='')
 
                 i += bestMatchLength
+                pbar.update(bestMatchLength)
 
             else:
                 # No useful match was found. Add 0 bit flag, followed by 8 bit for the character
@@ -68,9 +71,11 @@ class LZSSCompressor:
                     print("<0, %s>" % data[i], end='')
 
                 i += 1
+                pbar.update(1)
 
         # fill the buffer with zeros if the number of bits is not a multiple of 8
         output_buffer.fill()
+        pbar.close()
 
         # write the compressed data into a binary file if a path is provided
         if output_file_path:
@@ -146,7 +151,7 @@ class LZSSCompressor:
         best_match_length = -1
 
         # Optimization: Only consider substrings of length 2 and greater, and just
-        # output any substring of length 1 (8 bits uncompressed is better than 13 bits
+        # output any substring of length 1 (1 + 8 bits uncompressed is better than 13 bits
         # for the flag, distance, and length)
         for j in range(current_position + 2, end_of_buffer):
 
